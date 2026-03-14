@@ -22,8 +22,8 @@ function splitIntoChunks(text: string): string[] {
   return chunks
 }
 
-async function translateChunk(text: string): Promise<string> {
-  const url = `${MYMEMORY_API}?q=${encodeURIComponent(text)}&langpair=en|cs`
+async function translateChunk(text: string, sourceLang = 'autodetect'): Promise<string> {
+  const url = `${MYMEMORY_API}?q=${encodeURIComponent(text)}&langpair=${sourceLang}|cs`
   const res = await fetch(url)
   if (!res.ok) throw new Error(`MyMemory API error: ${res.status}`)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,22 +32,23 @@ async function translateChunk(text: string): Promise<string> {
   return data.responseData.translatedText as string
 }
 
-export async function translateToCzech(text: string): Promise<string> {
+export async function translateToCzech(text: string, sourceLang = 'autodetect'): Promise<string> {
   const chunks = splitIntoChunks(text)
   const results: string[] = []
   for (const chunk of chunks) {
-    results.push(await translateChunk(chunk))
+    results.push(await translateChunk(chunk, sourceLang))
   }
   return results.join(' ')
 }
 
 export async function translateArticle(
   title: string,
-  content: string
+  content: string,
+  sourceLang = 'autodetect'
 ): Promise<{ translatedTitle: string; translatedContent: string }> {
   const [translatedTitle, translatedContent] = await Promise.all([
-    translateToCzech(title),
-    translateToCzech(content),
+    translateToCzech(title, sourceLang),
+    translateToCzech(content, sourceLang),
   ])
   return { translatedTitle, translatedContent }
 }
