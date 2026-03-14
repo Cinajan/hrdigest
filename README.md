@@ -1,36 +1,102 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RecruitPulse — HR Digest
 
-## Getting Started
+Automatizovaný týdenní kurátorský digest pro HR/recruitment profesionály. Systém stahuje články z RSS feedů a webů, překládá je do češtiny přes DeepL a umožňuje adminovi schválit výběr a odeslat email příjemcům.
 
-First, run the development server:
+## Stack
+
+- **Next.js 14** (App Router) + TypeScript + Tailwind CSS
+- **Supabase** — PostgreSQL databáze + Auth
+- **Resend** — odesílání emailů
+- **DeepL API** — překlad do češtiny
+- **Vercel** — hosting + cron jobs
+
+## Rychlý start
+
+### 1. Naklonuj repo a nainstaluj závislosti
+
+```bash
+git clone <repo-url>
+cd hrdigest
+npm install
+```
+
+### 2. Nastav environment variables
+
+```bash
+cp .env.example .env.local
+# Vyplň hodnoty v .env.local
+```
+
+### 3. Vytvoř Supabase projekt
+
+1. Jdi na [supabase.com](https://supabase.com) a vytvoř nový projekt
+2. V SQL editoru spusť migraci: `supabase/migrations/001_initial_schema.sql`
+3. Volitelně spusť seed data: `supabase/seed.sql`
+4. Zkopíruj URL a klíče do `.env.local`
+
+### 4. Vytvoř admin účet
+
+V Supabase dashboardu → Authentication → Users → Add user:
+- Email: stejný jako `ADMIN_EMAIL` v `.env.local`
+- Password: stejný jako `ADMIN_PASSWORD`
+
+### 5. Spusť vývojový server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Otevři [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Struktura projektu
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── (admin)/          # Chráněné admin stránky
+│   │   ├── dashboard/    # Review článků + správa digestu
+│   │   ├── recipients/   # Správa příjemců
+│   │   ├── sources/      # Správa zdrojů
+│   │   └── settings/     # Nastavení odesílání
+│   ├── (public)/         # Veřejný archiv
+│   │   └── archive/      # Seznam digestů + detail + detail článku
+│   ├── api/              # API routes
+│   └── login/            # Login stránka
+├── components/
+│   ├── admin/            # Admin UI komponenty
+│   ├── archive/          # Archiv komponenty
+│   └── email/            # React Email šablona
+├── lib/
+│   ├── supabase/         # Supabase klienti + typy
+│   ├── scraper/          # RSS + web scraper
+│   └── translator/       # DeepL integrace
+└── config/               # Kategorie, výchozí zdroje
+```
 
-## Learn More
+## Workflow
 
-To learn more about Next.js, take a look at the following resources:
+1. **Scraping** — cron job spouští `/api/cron/scrape` každý den v 6:00
+2. **Review** — admin vidí nové články v dashboardu, přidá max. 3 do digestu
+3. **Překlad** — anglické články jsou automaticky přeloženy přes DeepL
+4. **Odeslání** — admin klikne "Odeslat digest", Resend rozešle email všem aktivním příjemcům
+5. **Archiv** — odeslaný digest je dostupný na veřejném archivu
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment na Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Propoj GitHub repo s Vercel projektem
+2. Nastav environment variables v Vercel dashboardu
+3. Cron job (denní scraping v 6:00 UTC) je nakonfigurován v `vercel.json`
+4. Pro cron autorizaci nastav `CRON_SECRET` — Vercel automaticky posílá `Authorization: Bearer <secret>`
 
-## Deploy on Vercel
+## Environment Variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Viz `.env.example` pro úplný seznam s popisy.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Free tier limity
+
+| Služba | Limit | Využití |
+|---|---|---|
+| Supabase | 500 MB, 50k řádků | Desítky let provozu |
+| DeepL Free | 500k znaků/měsíc | ~36k znaků/měsíc (3 články/týden) |
+| Resend Free | 3 000 emailů/měsíc | 80 digestů × 20 příjemců |
+| Vercel Free | 1 cron job/den | Stačí |
